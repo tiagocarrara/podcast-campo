@@ -1,0 +1,204 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&f[]=satoshi@400,500,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-clash: 'Clash Display', system-ui, sans-serif;
+  --font-satoshi: 'Satoshi', system-ui, sans-serif;
+  --font-jetbrains: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply font-body antialiased;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    min-height: 100vh;
+  }
+
+  ::selection {
+    @apply bg-campo-500/30 text-campo-100;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-slate-800/90 backdrop-blur-xl border border-slate-700/50;
+  }
+
+  .glass-dark {
+    @apply bg-slate-900/95 backdrop-blur-xl border border-slate-700/50;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-campo-500 to-campo-600 text-white font-medium rounded-2xl
+    hover:from-campo-400 hover:to-campo-500 transition-all duration-300 
+    shadow-lg shadow-campo-500/25 hover:shadow-campo-500/40 hover:scale-[1.02]
+    active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-slate-700 text-white font-medium rounded-2xl
+    hover:bg-slate-600 transition-all duration-300 border border-slate-600
+    hover:border-slate-500;
+  }
+
+  .card {
+    @apply bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-6 transition-all duration-300
+    hover:bg-slate-700/90 hover:border-slate-600/50;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl
+    text-white placeholder:text-slate-500 focus:outline-none focus:border-campo-500
+    focus:ring-2 focus:ring-campo-500/30 transition-all duration-200;
+  }
+
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-campo-500/20 text-campo-400 border border-campo-500/30;
+  }
+
+  .badge-warning {
+    @apply badge bg-accent-amber/20 text-accent-amber border border-accent-amber/30;
+  }
+
+  .badge-info {
+    @apply badge bg-accent-cyan/20 text-accent-cyan border border-accent-cyan/30;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-campo-400 via-campo-300 to-accent-cyan bg-clip-text text-transparent;
+  }
+
+  .recording-pulse {
+    @apply relative;
+  }
+
+  .recording-pulse::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-accent-coral animate-ping opacity-75;
+  }
+
+  .wave-bar {
+    @apply w-1 bg-gradient-to-t from-campo-500 to-campo-300 rounded-full;
+    animation: wave 1.2s linear infinite;
+  }
+
+  .wave-bar:nth-child(1) { animation-delay: 0s; height: 20px; }
+  .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 35px; }
+  .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 25px; }
+  .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 40px; }
+  .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 30px; }
+  .wave-bar:nth-child(6) { animation-delay: 0.5s; height: 45px; }
+  .wave-bar:nth-child(7) { animation-delay: 0.6s; height: 20px; }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .mesh-gradient {
+    background: 
+      radial-gradient(at 40% 20%, rgba(34, 197, 94, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(34, 211, 238, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(167, 139, 250, 0.1) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, rgba(251, 191, 36, 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(34, 197, 94, 0.1) 0px, transparent 50%);
+  }
+
+  .grid-pattern {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  .noise-overlay {
+    position: relative;
+  }
+
+  .noise-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom scrollbar for non-hidden scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Audio waveform animation */
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+
+.animate-wave {
+  animation: wave 0.8s ease-in-out infinite;
+}
+
+/* Shimmer effect for loading */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
