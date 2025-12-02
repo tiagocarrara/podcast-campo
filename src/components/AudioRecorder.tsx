@@ -33,8 +33,40 @@ export function AudioRecorder({ onRecordingComplete, disabled }: AudioRecorderPr
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      // Verificar se a API existe
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Seu navegador não suporta gravação de áudio. Tente usar Chrome ou Firefox.');
+        return;
+      }
+
+      // Verificar permissão atual
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+        console.log('Status da permissão do microfone:', permissionStatus.state);
+        
+        if (permissionStatus.state === 'denied') {
+          alert('Permissão do microfone foi negada. Por favor, vá nas configurações do navegador e permita o acesso ao microfone para este site.');
+          return;
+        }
+      } catch (permError) {
+        // Alguns navegadores não suportam permissions.query para microfone
+        console.log('Não foi possível verificar permissão:', permError);
+      }
+
+      console.log('Solicitando acesso ao microfone...');
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      console.log('Microfone acessado com sucesso!');
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -45,7 +77,8 @@ export function AudioRecorder({ onRecordingComplete, disabled }: AudioRecorderPr
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -60,9 +93,22 @@ export function AudioRecorder({ onRecordingComplete, disabled }: AudioRecorderPr
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao acessar microfone:', error);
-      alert('Não foi possível acessar o microfone. Verifique as permissões.');
+      
+      const err = error as Error & { name?: string };
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert('Permissão negada. Clique no ícone de cadeado na barra de endereço e permita o acesso ao microfone.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert('Nenhum microfone encontrado. Conecte um microfone e tente novamente.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        alert('O microfone está sendo usado por outro aplicativo. Feche outros programas e tente novamente.');
+      } else if (err.name === 'OverconstrainedError') {
+        alert('Não foi possível usar o microfone com as configurações solicitadas.');
+      } else {
+        alert(`Erro ao acessar microfone: ${err.message || 'Erro desconhecido'}. Verifique as permissões do navegador.`);
+      }
     }
   };
 
