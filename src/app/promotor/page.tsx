@@ -262,6 +262,7 @@ export default function PromotorPage() {
       reader.readAsDataURL(audioBlob);
       reader.onloadend = async () => {
         const base64Audio = reader.result as string;
+        console.log('Áudio convertido para base64, tamanho:', base64Audio.length);
 
         // Primeiro transcrever
         const formData = new FormData();
@@ -270,22 +271,37 @@ export default function PromotorPage() {
         formData.append('storeId', selectedStore.id);
         formData.append('promotorId', mockUser.id);
 
+        console.log('Enviando áudio para transcrição...', {
+          blobSize: audioBlob.size,
+          blobType: audioBlob.type,
+        });
+
         let transcription = '';
         try {
           const transcribeResponse = await fetch('/api/transcribe', {
             method: 'POST',
             body: formData,
           });
-          if (transcribeResponse.ok) {
-            const data = await transcribeResponse.json();
-            transcription = data.transcription || '';
+          
+          console.log('Resposta da transcrição - Status:', transcribeResponse.status);
+          
+          const data = await transcribeResponse.json();
+          console.log('Dados da transcrição:', data);
+          
+          if (transcribeResponse.ok && data.transcription) {
+            transcription = data.transcription;
+            console.log('Transcrição obtida:', transcription.slice(0, 100) + '...');
+          } else {
+            console.warn('Transcrição falhou ou vazia:', data.error || 'sem erro específico');
           }
         } catch (e) {
           console.error('Erro na transcrição:', e);
         }
 
         // Salvar gravação
-        await fetch('/api/recordings', {
+        console.log('Salvando gravação com transcrição:', transcription ? 'SIM' : 'NÃO');
+        
+        const saveResponse = await fetch('/api/recordings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -303,6 +319,9 @@ export default function PromotorPage() {
             analysis: evaluation,
           }),
         });
+
+        const saveData = await saveResponse.json();
+        console.log('Gravação salva:', saveData);
 
         setShowSuccess(true);
         setTimeout(() => {

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // API para transcrição de áudio usando OpenAI Whisper
 
 export async function POST(request: NextRequest) {
+  console.log('=== API TRANSCRIBE CHAMADA ===');
+  
   try {
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File | null;
@@ -10,18 +12,32 @@ export async function POST(request: NextRequest) {
     const storeId = formData.get('storeId') as string;
     const promotorId = formData.get('promotorId') as string;
 
+    console.log('Dados recebidos:', {
+      hasAudio: !!audioFile,
+      audioType: audioFile?.type,
+      audioSize: audioFile?.size,
+      missionId,
+      storeId,
+      promotorId,
+    });
+
     if (!audioFile) {
+      console.error('Erro: Arquivo de áudio não fornecido');
       return NextResponse.json(
         { error: 'Arquivo de áudio não fornecido' },
         { status: 400 }
       );
     }
 
-    // Validar tipo de arquivo
-    const allowedTypes = ['audio/webm', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg', 'audio/mpeg'];
-    if (!allowedTypes.some(type => audioFile.type.includes(type.split('/')[1]))) {
+    // Validar tipo de arquivo - aceitar mais formatos
+    const audioType = audioFile.type || 'audio/webm';
+    console.log('Tipo do áudio:', audioType);
+    
+    // Aceitar qualquer tipo de áudio
+    if (!audioType.startsWith('audio/') && !audioType.includes('webm') && !audioType.includes('octet-stream')) {
+      console.error('Erro: Formato não suportado:', audioType);
       return NextResponse.json(
-        { error: 'Formato de áudio não suportado' },
+        { error: `Formato de áudio não suportado: ${audioType}` },
         { status: 400 }
       );
     }
@@ -38,21 +54,28 @@ export async function POST(request: NextRequest) {
     const openaiApiKey = process.env.OPENAI_API_KEY;
     
     if (!openaiApiKey) {
+      console.error('Erro: OPENAI_API_KEY não configurada');
       return NextResponse.json(
         { error: 'Chave da API OpenAI não configurada' },
         { status: 500 }
       );
     }
 
+    console.log('OpenAI API Key configurada, iniciando transcrição...');
+
     // Converter File para Buffer
     const audioBuffer = await audioFile.arrayBuffer();
+    console.log('Buffer do áudio criado, tamanho:', audioBuffer.byteLength);
     
     // Criar FormData para OpenAI
     const openaiFormData = new FormData();
-    openaiFormData.append('file', new Blob([audioBuffer], { type: audioFile.type }), 'audio.webm');
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/webm' });
+    openaiFormData.append('file', audioBlob, 'audio.webm');
     openaiFormData.append('model', 'whisper-1');
     openaiFormData.append('language', 'pt');
     openaiFormData.append('response_format', 'json');
+    
+    console.log('Enviando para OpenAI Whisper...');
     
     // Chamar API do Whisper
     const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -63,9 +86,11 @@ export async function POST(request: NextRequest) {
       body: openaiFormData,
     });
 
+    console.log('Resposta do Whisper - Status:', whisperResponse.status);
+
     if (!whisperResponse.ok) {
       const error = await whisperResponse.json();
-      console.error('Erro Whisper:', error);
+      console.error('Erro Whisper:', JSON.stringify(error, null, 2));
       return NextResponse.json(
         { error: 'Erro na transcrição: ' + (error.error?.message || 'Erro desconhecido') },
         { status: 500 }
@@ -73,6 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     const whisperResult = await whisperResponse.json();
+    console.log('Transcrição recebida:', whisperResult.text?.slice(0, 100) + '...');
     
     const recording = {
       id: `rec_${Date.now()}`,
