@@ -100,6 +100,8 @@ export async function addRecording(recording: StoredRecording): Promise<StoredRe
       const buffer = Buffer.from(base64Data, 'base64');
       const fileName = `${recording.id}_${Date.now()}.webm`;
       
+      console.log('Tentando upload do áudio:', fileName, 'Tamanho:', buffer.length);
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('audios')
         .upload(fileName, buffer, {
@@ -107,14 +109,22 @@ export async function addRecording(recording: StoredRecording): Promise<StoredRe
           upsert: true
         });
       
-      if (!uploadError && uploadData) {
+      if (uploadError) {
+        console.error('Erro no upload do Supabase Storage:', uploadError);
+        // Fallback: salvar o base64 diretamente (não ideal, mas funciona)
+        audioUrl = recording.audioData;
+      } else if (uploadData) {
+        console.log('Upload bem sucedido:', uploadData);
         const { data: urlData } = supabase.storage
           .from('audios')
           .getPublicUrl(fileName);
         audioUrl = urlData.publicUrl;
+        console.log('URL pública gerada:', audioUrl);
       }
     } catch (e) {
       console.error('Erro no upload do áudio:', e);
+      // Fallback: salvar o base64 diretamente
+      audioUrl = recording.audioData;
     }
   }
 
