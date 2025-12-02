@@ -169,14 +169,27 @@ Responda APENAS com o JSON, sem texto adicional.`;
     let episodeContent;
     try {
       // Tentar limpar o JSON se tiver texto extra
-      let jsonText = contentText;
-      if (contentText.includes('```json')) {
-        jsonText = contentText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      let jsonText = contentText || '';
+      
+      // Remover markdown code blocks de várias formas
+      jsonText = jsonText
+        .replace(/^```json\s*/i, '')  // Remove ```json do início
+        .replace(/^```\s*/i, '')       // Remove ``` do início
+        .replace(/\s*```$/i, '')       // Remove ``` do final
+        .replace(/^json\s*/i, '')      // Remove "json" solto no início
+        .trim();
+      
+      // Se ainda começar com algum texto antes do {, encontrar o {
+      const jsonStart = jsonText.indexOf('{');
+      const jsonEnd = jsonText.lastIndexOf('}');
+      
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        jsonText = jsonText.slice(jsonStart, jsonEnd + 1);
       }
-      if (contentText.includes('```')) {
-        jsonText = contentText.replace(/```\n?/g, '');
-      }
-      episodeContent = JSON.parse(jsonText.trim());
+      
+      console.log('JSON limpo (primeiros 200 chars):', jsonText.slice(0, 200));
+      
+      episodeContent = JSON.parse(jsonText);
       console.log('JSON parseado com sucesso');
     } catch (parseError) {
       console.error('Erro ao parsear JSON:', parseError);
