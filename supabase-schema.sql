@@ -58,3 +58,4 @@ CREATE POLICY "Allow all on episodes" ON episodes FOR ALL USING (true);
 -- Storage bucket para áudios (executar na seção Storage do Supabase)
 -- Criar bucket chamado 'audios' com acesso público
 
+

@@ -187,3 +187,4 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   { rank: 10, userId: '10', userName: 'Thiago Reis', points: 650, recordings: 13, streak: 6 },
 ];
 
+

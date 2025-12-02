@@ -39,9 +39,13 @@ export async function GET(request: NextRequest) {
 
 // POST - Gerar novo episódio de podcast
 export async function POST(request: NextRequest) {
+  console.log('=== API EPISODES POST ===');
+  
   try {
     const body = await request.json();
     const { missionId, missionTitle, recordingIds } = body;
+
+    console.log('Dados recebidos:', { missionId, missionTitle, recordingIds });
 
     if (!missionId) {
       return NextResponse.json(
@@ -51,7 +55,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar gravações da missão
+    console.log('Buscando gravações da missão:', missionId);
     const allRecordings = await getRecordingsByMission(missionId);
+    console.log('Gravações encontradas:', allRecordings.length);
     
     // Se recordingIds foi passado, filtrar apenas essas gravações
     let selectedRecordings;
@@ -64,6 +70,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('Gravações selecionadas:', selectedRecordings.length);
+
     if (selectedRecordings.length < 1) {
       return NextResponse.json(
         { error: 'Necessário pelo menos 1 gravação para gerar episódio' },
@@ -73,6 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Filtrar apenas gravações com transcrição
     const recordingsWithTranscription = selectedRecordings.filter(r => r.transcription);
+    console.log('Gravações com transcrição:', recordingsWithTranscription.length);
     
     if (recordingsWithTranscription.length < 1) {
       return NextResponse.json(
@@ -124,6 +133,9 @@ O script deve:
 
 Responda APENAS com o JSON, sem texto adicional.`;
 
+    console.log('Enviando para GPT-4o-mini...');
+    console.log('Tamanho do prompt:', prompt.length, 'caracteres');
+    
     const gptResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -138,11 +150,13 @@ Responda APENAS com o JSON, sem texto adicional.`;
       }),
     });
 
+    console.log('Resposta GPT - Status:', gptResponse.status);
+
     if (!gptResponse.ok) {
       const error = await gptResponse.json();
-      console.error('Erro GPT:', error);
+      console.error('Erro GPT:', JSON.stringify(error, null, 2));
       return NextResponse.json(
-        { error: 'Erro ao gerar episódio' },
+        { error: 'Erro ao gerar episódio: ' + (error.error?.message || 'Erro desconhecido') },
         { status: 500 }
       );
     }
@@ -150,13 +164,25 @@ Responda APENAS com o JSON, sem texto adicional.`;
     const gptResult = await gptResponse.json();
     const contentText = gptResult.choices[0]?.message?.content;
     
+    console.log('Resposta GPT recebida, tamanho:', contentText?.length);
+    
     let episodeContent;
     try {
-      episodeContent = JSON.parse(contentText);
-    } catch {
-      console.error('Erro ao parsear:', contentText);
+      // Tentar limpar o JSON se tiver texto extra
+      let jsonText = contentText;
+      if (contentText.includes('```json')) {
+        jsonText = contentText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      }
+      if (contentText.includes('```')) {
+        jsonText = contentText.replace(/```\n?/g, '');
+      }
+      episodeContent = JSON.parse(jsonText.trim());
+      console.log('JSON parseado com sucesso');
+    } catch (parseError) {
+      console.error('Erro ao parsear JSON:', parseError);
+      console.error('Conteúdo recebido:', contentText?.slice(0, 500));
       return NextResponse.json(
-        { error: 'Erro ao processar resposta da IA' },
+        { error: 'Erro ao processar resposta da IA. Tente novamente.' },
         { status: 500 }
       );
     }
@@ -165,25 +191,29 @@ Responda APENAS com o JSON, sem texto adicional.`;
     const episode: StoredEpisode = {
       id: `ep_${Date.now()}`,
       missionId,
-      missionTitle,
-      title: episodeContent.title,
-      summary: episodeContent.summary,
-      script: episodeContent.script,
+      missionTitle: missionTitle || 'Episódio',
+      title: episodeContent.title || 'Novo Episódio',
+      summary: episodeContent.summary || '',
+      script: episodeContent.script || '',
       recordingIds: approvedRecordings.map(r => r.id),
       totalRecordings: approvedRecordings.length,
-      keyInsights: episodeContent.keyInsights,
+      keyInsights: episodeContent.keyInsights || [],
       status: 'revisao',
       createdAt: new Date().toISOString(),
     };
 
+    console.log('Salvando episódio no Supabase...');
     const saved = await addEpisode(episode);
 
     if (!saved) {
+      console.error('Erro ao salvar episódio no Supabase');
       return NextResponse.json(
-        { error: 'Erro ao salvar episódio' },
+        { error: 'Erro ao salvar episódio no banco de dados' },
         { status: 500 }
       );
     }
+
+    console.log('Episódio salvo com sucesso:', saved.id);
 
     return NextResponse.json({
       success: true,
@@ -192,8 +222,9 @@ Responda APENAS com o JSON, sem texto adicional.`;
     });
   } catch (error) {
     console.error('Erro ao gerar episódio:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return NextResponse.json(
-      { error: 'Erro ao gerar episódio' },
+      { error: 'Erro ao gerar episódio: ' + errorMessage },
       { status: 500 }
     );
   }
