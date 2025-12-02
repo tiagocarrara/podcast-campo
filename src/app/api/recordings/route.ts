@@ -74,24 +74,33 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH - Atualizar status
+// PATCH - Atualizar gravação (status, transcrição, etc)
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, status } = body;
+    const { id, status, transcription } = body;
 
-    if (!id || !status) {
+    if (!id) {
       return NextResponse.json(
-        { error: 'ID e status são obrigatórios' },
+        { error: 'ID é obrigatório' },
         { status: 400 }
       );
     }
 
-    await updateRecordingStatus(id, status);
+    // Se tiver status, atualizar status
+    if (status) {
+      await updateRecordingStatus(id, status);
+    }
+
+    // Se tiver transcrição, atualizar transcrição
+    if (transcription !== undefined) {
+      const { updateRecordingTranscription } = await import('@/lib/store');
+      await updateRecordingTranscription(id, transcription);
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Status atualizado!',
+      message: 'Gravação atualizada!',
     });
   } catch (error) {
     console.error('Erro ao atualizar:', error);

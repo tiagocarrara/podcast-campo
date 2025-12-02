@@ -212,6 +212,17 @@ export async function updateRecordingStatus(id: string, status: StoredRecording[
   }
 }
 
+export async function updateRecordingTranscription(id: string, transcription: string): Promise<void> {
+  const { error } = await supabase
+    .from('recordings')
+    .update({ transcription, status: 'transcrito' })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao atualizar transcrição:', error);
+  }
+}
+
 // =============================================
 // EPISODES
 // =============================================

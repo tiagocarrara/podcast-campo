@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { missionId, missionTitle } = body;
+    const { missionId, missionTitle, recordingIds } = body;
 
     if (!missionId) {
       return NextResponse.json(
@@ -50,18 +50,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Buscar gravações aprovadas da missão
-    const recordings = await getRecordingsByMission(missionId);
-    const approvedRecordings = recordings.filter(r => 
-      r.status === 'aprovado' || r.status === 'transcrito'
-    );
+    // Buscar gravações da missão
+    const allRecordings = await getRecordingsByMission(missionId);
+    
+    // Se recordingIds foi passado, filtrar apenas essas gravações
+    let selectedRecordings;
+    if (recordingIds && recordingIds.length > 0) {
+      selectedRecordings = allRecordings.filter(r => recordingIds.includes(r.id));
+    } else {
+      // Fallback: usar gravações aprovadas/transcritas
+      selectedRecordings = allRecordings.filter(r => 
+        r.status === 'aprovado' || r.status === 'transcrito'
+      );
+    }
 
-    if (approvedRecordings.length < 1) {
+    if (selectedRecordings.length < 1) {
       return NextResponse.json(
         { error: 'Necessário pelo menos 1 gravação para gerar episódio' },
         { status: 400 }
       );
     }
+
+    // Filtrar apenas gravações com transcrição
+    const recordingsWithTranscription = selectedRecordings.filter(r => r.transcription);
+    
+    if (recordingsWithTranscription.length < 1) {
+      return NextResponse.json(
+        { error: 'Necessário pelo menos 1 gravação transcrita para gerar episódio' },
+        { status: 400 }
+      );
+    }
+
+    const approvedRecordings = recordingsWithTranscription;
 
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
