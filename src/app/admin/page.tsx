@@ -19,7 +19,8 @@ interface Recording {
   storeId: string;
   storeName: string;
   storeCity: string;
-  audioData: string;
+  audioUrl?: string;
+  audioData?: string;
   transcription: string;
   duration: number;
   score: number;
@@ -27,8 +28,9 @@ interface Recording {
   createdAt: string;
   analysis?: {
     score: number;
-    feedback: string[];
-    improvements: string[];
+    covered: string[];
+    missing: string[];
+    summary?: string;
   };
 }
 
@@ -39,6 +41,7 @@ interface Episode {
   title: string;
   summary: string;
   script: string;
+  audioUrl?: string;
   audioData?: string;
   recordingIds: string[];
   totalRecordings: number;
@@ -74,8 +77,11 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/recordings');
       const data = await res.json();
+      console.log('Gravações carregadas:', data);
       if (data.success) {
         setRecordings(data.recordings);
+      } else {
+        console.error('Erro na resposta:', data.error);
       }
     } catch (error) {
       console.error('Erro ao carregar gravações:', error);
@@ -135,10 +141,13 @@ export default function AdminPage() {
       audioRef.current?.pause();
       setPlayingId(null);
     } else {
-      if (audioRef.current) {
-        audioRef.current.src = recording.audioData;
-        audioRef.current.play();
+      const audioSrc = recording.audioUrl || recording.audioData;
+      if (audioRef.current && audioSrc) {
+        audioRef.current.src = audioSrc;
+        audioRef.current.play().catch(err => console.error('Erro ao tocar áudio:', err));
         setPlayingId(recording.id);
+      } else {
+        console.warn('Gravação sem áudio disponível');
       }
     }
   };
@@ -466,12 +475,18 @@ export default function AdminPage() {
                         {/* Play Button */}
                         <button 
                           onClick={() => playAudio(recording)}
-                          className="w-14 h-14 rounded-xl bg-gradient-to-br from-campo-500 to-campo-600 flex items-center justify-center flex-shrink-0 hover:scale-105 transition-transform"
+                          disabled={!recording.audioUrl && !recording.audioData}
+                          className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${
+                            recording.audioUrl || recording.audioData
+                              ? 'bg-gradient-to-br from-campo-500 to-campo-600 hover:scale-105'
+                              : 'bg-slate-700 cursor-not-allowed'
+                          }`}
+                          title={recording.audioUrl || recording.audioData ? 'Tocar áudio' : 'Áudio não disponível'}
                         >
                           {playingId === recording.id ? (
                             <Pause className="w-6 h-6 text-white" fill="white" />
                           ) : (
-                            <Play className="w-6 h-6 text-white ml-1" fill="white" />
+                            <Play className={`w-6 h-6 ml-1 ${recording.audioUrl || recording.audioData ? 'text-white' : 'text-slate-500'}`} fill="currentColor" />
                           )}
                         </button>
 
@@ -487,9 +502,13 @@ export default function AdminPage() {
                             </span>
                           </div>
                           
-                          {recording.transcription && (
+                          {recording.transcription ? (
                             <p className="text-sm text-slate-300 mb-3 line-clamp-2">
                               {recording.transcription}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-slate-500 italic mb-3">
+                              Transcrição não disponível
                             </p>
                           )}
 
@@ -569,7 +588,7 @@ export default function AdminPage() {
                           <p className="text-sm text-slate-400">{episode.missionTitle}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {!episode.audioData && episode.status !== 'gerando' && (
+                          {!episode.audioUrl && !episode.audioData && episode.status !== 'gerando' && (
                             <button 
                               onClick={() => narrateEpisode(episode.id)}
                               disabled={isNarrating === episode.id}
@@ -583,7 +602,7 @@ export default function AdminPage() {
                               {isNarrating === episode.id ? 'Gerando...' : 'Gerar Narração'}
                             </button>
                           )}
-                          {episode.status === 'revisao' && episode.audioData && (
+                          {episode.status === 'revisao' && (episode.audioUrl || episode.audioData) && (
                             <button 
                               onClick={() => publishEpisode(episode.id)}
                               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-campo-500 text-white hover:bg-campo-400 transition-colors"
@@ -622,12 +641,12 @@ export default function AdminPage() {
                       </details>
 
                       {/* Audio Player */}
-                      {episode.audioData && (
+                      {(episode.audioUrl || episode.audioData) && (
                         <div className="pt-4 border-t border-slate-700">
                           <p className="text-sm text-slate-400 mb-2">Áudio do Podcast:</p>
                           <audio 
                             controls 
-                            src={episode.audioData}
+                            src={episode.audioUrl || episode.audioData}
                             className="w-full"
                           />
                         </div>
